@@ -1,19 +1,19 @@
 import pygame
-from view_mode import View_mode
-
+from .colors import *
 class Track:
-    def __init__(self, pieces):
+    def __init__(self, pieces, start_switch, end_switch):
         self.pieces = pieces
+        self.start_switch = start_switch
+        self.end_switch = end_switch
 
 
 class Switch:
 
     def __init__(self, position):
         self.pos = position
+        self.tracks = []
 
 
-    def draw(self, surface, view_mode):
-        pass
 
 
 class Incomplete_track:
