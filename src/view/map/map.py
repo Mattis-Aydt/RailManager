@@ -1,68 +1,85 @@
 import geotiler
 import pygame
+from src.math.collisions import is_box_collision
+from src.view.config import RESOLUTION, PRELOAD_FACTOR
+import threading
 
 
 
 
 
 class StandardMap:
-    def __init__(self, surface, render_size=(1920, 1080), zoom=6, center=(10.0, 51.0)):
+    def __init__(self, surface):
         self.__surface = surface
-        self.__render_size = render_size
-        self.__zoom = zoom
-        self.__center = center
-        self.__base_map = None
-        self.__base_map_image = None
-        self.__base_map_pygame_image = None
-        self.__base_map_pygame_image_zoomed = None
-        self.__update_base_map()
+        self.__scale = (1, 1)
+        self.offset = (0, 0)
+        self.__render_quality_chunk = ()
+
+        self.__chunks = [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []] #16-zoom levels
+        self.__current_chunks_scaled = []
+        self.__zoom = 6
 
 
+    def set_scale(self, x, y):
+        self.__scale = (x, y)
+        #update function smth
 
-
-
-
-    def draw(self, scale, offset):
-        self.__surface.blit(self.__base_map_pygame_image_zoomed, (0, 0))
+    def zoom(self, factor):
         pass
 
-    def update(self):
+
+    def __update_chunks(self):
         pass
 
-    def zoom(self, amount):
-        previous_zoom = self.__zoom
-        self.__zoom += amount
-        if int(previous_zoom) != int(self.__zoom):
-            self.__update_base_map()
+
+    def __set_pygame_image(self, geotiler_image):
+        mode = geotiler_image.mode
+        size = geotiler_image.size
+        data = geotiler_image.tobytes()
+        return pygame.image.fromstring(data, size, mode)
+
+
+class Chunk:
+    def __init__(self, bbox, zoom_level, camera, surface):
+        """.
+
+        :param zoom_level: constant. Zoomlevel of downloaded map tile. Shouldn't be changed
+        """
+        self.camera = camera
+        self.surface = surface
+        self.zoom_level = zoom_level
+        self.bbox = bbox
+
+        self.last_used = None
+        self.rendered_image = None
+
+    def render(self):
+        if not self.rendered_image:
+            self.__download_image()
 
 
 
-        self.set_pygame_image_zoomed()
+    def draw(self, map_size):
+        if not self.is_visible(map_size):
+            return
+        if not self.rendered_image:
+            self.render()
+    def is_visible(self, map_size):
+        return is_box_collision(self.bbox, self.camera.bbox)
 
+    def clear(self):
+        self.rendered_image = None
 
-
-
-
-    def __update_base_map(self):
-        print("downloading new map...")
+    def __download_image(self):
+        print("downloading new chunk...")
         #pygame.time.wait(1000)
-        self.__base_map = geotiler.Map(center=self.__center, zoom=int(self.__zoom), size=self.__render_size)
+        self.__base_map = geotiler.Map(extent=self.bbox, zoom=self.zoom_level)
         self.__base_map_image = geotiler.render_map(self.__base_map)
-        self.set_pygame_image()
-        self.set_pygame_image_zoomed()
         print("done!")
 
+class Camera:
+    def __init__(self, pos, zoom):
+        self.pos = pos
+        self.zoom = zoom
+        self.bbox = None
 
-
-
-    def set_pygame_image(self):
-        mode = self.__base_map_image.mode
-        size = self.__base_map_image.size
-        data = self.__base_map_image.tobytes()
-        self.__base_map_pygame_image = pygame.image.fromstring(data, size, mode)
-
-    def set_pygame_image_zoomed(self):
-        map_zoom = int(self.__zoom)
-        image_zoom = 1 + (self.__zoom - map_zoom)
-        print(image_zoom)
-        self.__base_map_pygame_image_zoomed = pygame.transform.scale_by(self.__base_map_pygame_image, (image_zoom, image_zoom))
