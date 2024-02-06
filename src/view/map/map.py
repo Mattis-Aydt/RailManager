@@ -40,7 +40,7 @@ class StandardMap:
 
 
 class Chunk:
-    def __init__(self, bbox, zoom_level, camera, surface):
+    def __init__(self, pos, size, zoom_level, camera, surface):
         """.
 
         :param zoom_level: constant. Zoomlevel of downloaded map tile. Shouldn't be changed
@@ -48,38 +48,51 @@ class Chunk:
         self.camera = camera
         self.surface = surface
         self.zoom_level = zoom_level
-        self.bbox = bbox
+        self.bbox = pos[0], pos[1], pos[0] + size, pos[1] + size
 
         self.last_used = None
+        self.image = None
         self.rendered_image = None
 
     def render(self):
-        if not self.rendered_image:
+        if not self.image:
             self.__download_image()
+        image_size = self.camera.get_screen_x_coordinate_from_GCS_coordinates(self.bbox[2]) - self.camera.get_screen_x_coordinate_from_GCS_coordinates(self.bbox[0])
+        self.rendered_image = pygame.transform.scale(self.image, (image_size, image_size))
+        pass
 
 
 
-    def draw(self, map_size):
-        if not self.is_visible(map_size):
+    def draw(self):
+        if not self.is_visible():
             return
-        if not self.rendered_image:
-            self.render()
-    def is_visible(self, map_size):
+        self.render()
+        pixel_coords = (self.camera.get_screen_coordinates_from_GCS_coordinates((self.bbox[0], self.bbox[1])))
+        self.surface.blit(self.rendered_image, pixel_coords)
+        pass
+
+
+    def is_visible(self):
         return is_box_collision(self.bbox, self.camera.bbox)
 
     def clear(self):
-        self.rendered_image = None
+        self.image = None
 
     def __download_image(self):
         print("downloading new chunk...")
         #pygame.time.wait(1000)
-        self.__base_map = geotiler.Map(extent=self.bbox, zoom=self.zoom_level)
-        self.__base_map_image = geotiler.render_map(self.__base_map)
+        map = geotiler.Map(extent=self.bbox, zoom=self.zoom_level)
+        image = geotiler.render_map(map)
+        image.save("map.png")
+        mode = image.mode
+        size = image.size
+        data = image.tobytes()
+        self.image = pygame.image.fromstring(data, size, mode)
+
         print("done!")
 
-class Camera:
-    def __init__(self, pos, zoom):
-        self.pos = pos
-        self.zoom = zoom
-        self.bbox = None
+
+
+
+
 
