@@ -10,12 +10,12 @@ win = pygame.display.set_mode(RESOLUTION)
 switch = Switch((100, 100))
 
 map = StandardMap(win)
-cam = Camera(None, None, RESOLUTION)
-cam.bbox = 8.360948, 48.992639, 8.360948 + 0.4, 48.992639 + 0.4
-chunk1 = Chunk((8.360948, 48.992639), 0.3, 12, cam, win)
-chunk2 = Chunk((8.360948 + 0.3, 48.992639), 0.3, 12, cam, win)
-chunk3 = Chunk((8.360948 + 0.7, 48.992639), 0.3, 12, cam, win)
-chunk4 = Chunk((8.360948 + 1, 48.992639), 0.3, 12, cam, win)
+cam = Camera(RESOLUTION)
+
+chunks = []
+for i in range(30):
+    for j in range(30):
+        chunks.append(Chunk((8.360948 + 0.099*(i-5), 48.992639 + 0.099*(j-5)), 0.1, 12, cam, win, RESOLUTION))
 
 
 
@@ -30,10 +30,9 @@ while run:
             run = False
 
     win.fill((255, 255, 255))
-    chunk1.draw()
-    chunk2.draw()
-    chunk3.draw()
-    chunk4.draw()
+    for chunk in chunks:
+        chunk.draw()
+
 
 
 
@@ -53,6 +52,11 @@ while run:
     if keys[pygame.K_d]:
         cam.move_right(0.01)
 
+    if keys[pygame.K_SPACE]:
+        cam.zoom_by(-0.1)
+    if keys[pygame.K_LSHIFT]:
+        cam.zoom_by(0.1)
+
 
     pygame.display.update()
-    pygame.time.wait(10)
+

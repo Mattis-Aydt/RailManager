@@ -2,6 +2,7 @@ import geotiler
 import pygame
 from src.math.collisions import is_box_collision
 from src.view.config import RESOLUTION, PRELOAD_FACTOR
+from src.view.map.camera import Camera
 import threading
 
 
@@ -11,21 +12,14 @@ import threading
 class StandardMap:
     def __init__(self, surface):
         self.__surface = surface
-        self.__scale = (1, 1)
-        self.offset = (0, 0)
-        self.__render_quality_chunk = ()
+        self.__cam = Camera(RESOLUTION)
 
-        self.__chunks = [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []] #16-zoom levels
+        self.__chunks = [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
         self.__current_chunks_scaled = []
-        self.__zoom = 6
 
 
-    def set_scale(self, x, y):
-        self.__scale = (x, y)
-        #update function smth
-
-    def zoom(self, factor):
-        pass
+    def zoom(self, amount):
+        self.__cam.zoom(amount)
 
 
     def __update_chunks(self):
@@ -40,13 +34,14 @@ class StandardMap:
 
 
 class Chunk:
-    def __init__(self, pos, size, zoom_level, camera, surface):
+    def __init__(self, pos, size, zoom_level, camera, surface, window_size):
         """.
 
         :param zoom_level: constant. Zoomlevel of downloaded map tile. Shouldn't be changed
         """
         self.camera = camera
         self.surface = surface
+        self.window_size = window_size
         self.zoom_level = zoom_level
         self.bbox = pos[0], pos[1], pos[0] + size, pos[1] + size
 
@@ -57,7 +52,7 @@ class Chunk:
     def render(self):
         if not self.image:
             self.__download_image()
-        image_size = self.camera.get_screen_x_coordinate_from_GCS_coordinates(self.bbox[2]) - self.camera.get_screen_x_coordinate_from_GCS_coordinates(self.bbox[0])
+        image_size = self.camera.get_screen_x_coordinate_from_GCS_coordinate(self.bbox[2]) - self.camera.get_screen_x_coordinate_from_GCS_coordinate(self.bbox[0])
         self.rendered_image = pygame.transform.scale(self.image, (image_size, image_size))
         pass
 
@@ -68,9 +63,9 @@ class Chunk:
             return
         self.render()
         pixel_coords = (self.camera.get_screen_coordinates_from_GCS_coordinates((self.bbox[0], self.bbox[1])))
-        self.surface.blit(self.rendered_image, pixel_coords)
+        pixel_coords_y_reversed = pixel_coords[0], self.window_size[1] - pixel_coords[1] - self.rendered_image.get_height()
+        self.surface.blit(self.rendered_image, pixel_coords_y_reversed)
         pass
-
 
     def is_visible(self):
         return is_box_collision(self.bbox, self.camera.bbox)
