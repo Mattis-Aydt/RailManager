@@ -10,38 +10,66 @@ import threading
 
 
 class StandardMap:
-    def __init__(self, surface):
+    def __init__(self, surface, chunk_size=0.2):
         self.__surface = surface
-        self.__cam = Camera(RESOLUTION)
-
-        self.__chunks = [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
+        self.cam = Camera(RESOLUTION, (8.560948, 49.192639))
+        self.chunk_size = chunk_size
+        self.max_chunks = 50
+        self.__chunks = []
         self.__current_chunks_scaled = []
 
+    def generate_chunks(self):
+        zoom_level = int(self.cam.zoom - 0.5)
+        chunk_size = self.chunk_size * 100 * 1/pow(2, zoom_level-4)
+        chunks_per_row = int(self.cam.get_bbox_width() / chunk_size) + 2
+        chunk_start_x = self.cam.bbox[0] - (self.cam.bbox[0] % chunk_size)
+        chunk_start_y = self.cam.bbox[1] - (self.cam.bbox[1] % chunk_size)
+        for i in range(chunks_per_row):
+            for j in range(chunks_per_row):
+                possible_chunk_p1 = (chunk_start_x + i*chunk_size, chunk_start_y + j*chunk_size)
+                chunk_exists = False
+                for existing_chunk in self.__chunks:
+                    if not existing_chunk.zoom_level == zoom_level:
+                        continue
+                    if (existing_chunk.bbox[0], existing_chunk.bbox[1]) == possible_chunk_p1:
+                        chunk_exists = True
+                        break
 
-    def zoom(self, amount):
-        self.__cam.zoom(amount)
+                if not chunk_exists:
+                    self.__chunks.append(Chunk(possible_chunk_p1, chunk_size, zoom_level, self.cam, self.__surface))
+        self.cleanup_chunks()
+        print(len(self.__chunks))
+
+    def cleanup_chunks(self):
+        while len(self.__chunks) > self.max_chunks:
+            chunk = self.__chunks.pop(0)
+            chunk.clear()
 
 
-    def __update_chunks(self):
-        pass
 
 
-    def __set_pygame_image(self, geotiler_image):
-        mode = geotiler_image.mode
-        size = geotiler_image.size
-        data = geotiler_image.tobytes()
-        return pygame.image.fromstring(data, size, mode)
+
+
+
+
+    def draw(self):
+        self.generate_chunks()
+
+        for chunk in self.__chunks:
+            if chunk.zoom_level == int(self.cam.zoom-0.5):
+                chunk.draw()
+
 
 
 class Chunk:
-    def __init__(self, pos, size, zoom_level, camera, surface, window_size):
+    def __init__(self, pos, size, zoom_level, camera, surface):
         """.
 
         :param zoom_level: constant. Zoomlevel of downloaded map tile. Shouldn't be changed
         """
         self.camera = camera
         self.surface = surface
-        self.window_size = window_size
+        self.window_size = self.camera.screen_size
         self.zoom_level = zoom_level
         self.bbox = pos[0], pos[1], pos[0] + size, pos[1] + size
 

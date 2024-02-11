@@ -1,5 +1,5 @@
 class Camera:
-    def __init__(self, screen_size, pos=(8.560948, 49.192639), zoom=12):
+    def __init__(self, screen_size, pos, zoom=12):
         self.pos = pos
         self.zoom = zoom
         self.screen_size = screen_size
@@ -27,6 +27,12 @@ class Camera:
     def get_GCS_y_coordinate_from_screen_coordinate(self, y):
         pass
         #TODO
+
+    def get_bbox_width(self):
+        return self.bbox[2] - self.bbox[0]
+
+    def get_bbox_height(self):
+        return self.bbox[3] - self.bbox[1]
 
 
 
