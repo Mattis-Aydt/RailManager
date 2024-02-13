@@ -1,22 +1,29 @@
+import threading
+
 import geotiler
 import pygame
+from geotiler import render_map_async
+
 from src.math.collisions import is_box_collision
 from src.view.config import RESOLUTION, PRELOAD_FACTOR
 from src.view.map.camera import Camera
-import threading
+from src.view.colors import *
+import asyncio
+
 
 
 
 
 
 class StandardMap:
-    def __init__(self, surface, chunk_size=0.2):
+    def __init__(self, surface, chunk_size=0.3):
         self.__surface = surface
         self.cam = Camera(RESOLUTION, (8.560948, 49.192639))
         self.chunk_size = chunk_size
-        self.max_chunks = 50
+        self.max_chunks = 1000
         self.__chunks = []
-        self.__current_chunks_scaled = []
+        self.chunks_to_download = []
+        self.base_color = WHITE
 
     def generate_chunks(self):
         zoom_level = int(self.cam.zoom - 0.5)
@@ -36,7 +43,9 @@ class StandardMap:
                         break
 
                 if not chunk_exists:
-                    self.__chunks.append(Chunk(possible_chunk_p1, chunk_size, zoom_level, self.cam, self.__surface))
+                    chunk = Chunk(possible_chunk_p1, chunk_size, zoom_level, self.cam, self.__surface)
+                    self.__chunks.append(chunk)
+                    self.chunks_to_download.append(chunk)
         self.cleanup_chunks()
         print(len(self.__chunks))
 
@@ -45,19 +54,20 @@ class StandardMap:
             chunk = self.__chunks.pop(0)
             chunk.clear()
 
-
-
-
-
-
-
-
     def draw(self):
         self.generate_chunks()
-
+        self.__surface.fill(self.base_color)
         for chunk in self.__chunks:
             if chunk.zoom_level == int(self.cam.zoom-0.5):
                 chunk.draw()
+
+    def update(self):
+        for chunk in self.chunks_to_download:
+            task = asyncio.create_task(chunk.download_chunk_async())
+            self.chunks_to_download.remove(chunk)
+
+    def check_downloads(self):
+
 
 
 
@@ -76,22 +86,29 @@ class Chunk:
         self.last_used = None
         self.image = None
         self.rendered_image = None
+        self.is_downloading = False
+        self.ticks_scince_downloading = 0
 
     def render(self):
         if not self.image:
-            self.__download_image()
+            self.ticks_scince_downloading += 1
+            return
         image_size = self.camera.get_screen_x_coordinate_from_GCS_coordinate(self.bbox[2]) - self.camera.get_screen_x_coordinate_from_GCS_coordinate(self.bbox[0])
         self.rendered_image = pygame.transform.scale(self.image, (image_size, image_size))
         pass
-
 
 
     def draw(self):
         if not self.is_visible():
             return
         self.render()
+        if not self.rendered_image:
+            return
+
         pixel_coords = (self.camera.get_screen_coordinates_from_GCS_coordinates((self.bbox[0], self.bbox[1])))
         pixel_coords_y_reversed = pixel_coords[0], self.window_size[1] - pixel_coords[1] - self.rendered_image.get_height()
+
+
         self.surface.blit(self.rendered_image, pixel_coords_y_reversed)
         pass
 
@@ -101,18 +118,18 @@ class Chunk:
     def clear(self):
         self.image = None
 
-    def __download_image(self):
+    async def download_chunk_async(self):
         print("downloading new chunk...")
-        #pygame.time.wait(1000)
+        # pygame.time.wait(1000)
         map = geotiler.Map(extent=self.bbox, zoom=self.zoom_level)
-        image = geotiler.render_map(map)
-        image.save("map.png")
+        image = await geotiler.render_map_async(map)
         mode = image.mode
         size = image.size
         data = image.tobytes()
         self.image = pygame.image.fromstring(data, size, mode)
 
         print("done!")
+
 
 
 
