@@ -25,6 +25,8 @@ class StandardMap:
         self.chunks_to_download = []
         self.base_color = WHITE
 
+        self.__restart_chunk_download_ticks = 200
+
     def generate_chunks(self):
         zoom_level = int(self.cam.zoom - 0.5)
         chunk_size = self.chunk_size * 100 * 1/pow(2, zoom_level-4)
@@ -47,7 +49,6 @@ class StandardMap:
                     self.__chunks.append(chunk)
                     self.chunks_to_download.append(chunk)
         self.cleanup_chunks()
-        print(len(self.__chunks))
 
     def cleanup_chunks(self):
         while len(self.__chunks) > self.max_chunks:
@@ -66,7 +67,14 @@ class StandardMap:
             task = asyncio.create_task(chunk.download_chunk_async())
             self.chunks_to_download.remove(chunk)
 
+        self.check_downloads()
+
     def check_downloads(self):
+        for chunk in self.__chunks:
+            if chunk.ticks_scince_downloading > self.__restart_chunk_download_ticks:
+                chunk.ticks_scince_downloading = 0
+                task = asyncio.create_task(chunk.download_chunk_async())
+                print("redownloading chunk...")
 
 
 
@@ -119,7 +127,6 @@ class Chunk:
         self.image = None
 
     async def download_chunk_async(self):
-        print("downloading new chunk...")
         # pygame.time.wait(1000)
         map = geotiler.Map(extent=self.bbox, zoom=self.zoom_level)
         image = await geotiler.render_map_async(map)
@@ -127,8 +134,6 @@ class Chunk:
         size = image.size
         data = image.tobytes()
         self.image = pygame.image.fromstring(data, size, mode)
-
-        print("done!")
 
 
 
