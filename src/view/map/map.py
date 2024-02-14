@@ -16,7 +16,7 @@ import asyncio
 
 
 class StandardMap:
-    def __init__(self, surface, chunk_size=0.3):
+    def __init__(self, surface, chunk_size=0.2):
         self.__surface = surface
         self.cam = Camera(RESOLUTION, (8.560948, 49.192639))
         self.chunk_size = chunk_size
@@ -58,6 +58,9 @@ class StandardMap:
     def draw(self):
         self.generate_chunks()
         self.__surface.fill(self.base_color)
+        for chunk in self.__chunks:
+            if chunk.zoom_level == int(self.cam.zoom-1.5):
+                chunk.draw()
         for chunk in self.__chunks:
             if chunk.zoom_level == int(self.cam.zoom-0.5):
                 chunk.draw()
